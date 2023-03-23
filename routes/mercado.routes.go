@@ -93,61 +93,49 @@ func GetMercadoCode(c *gin.Context) {
 
 // Obtener un producto por su ID
 func GetMercadoProduct(c *gin.Context) {
-	var product models.MercadoProduct
-	var err error
-
-	product.ID = c.Param("id")
+	product := models.MercadoProduct{ID: c.Param("id")}
 
 	// Obtener Auth Token
 	token, err := utils.GetLastToken()
 	if err != nil {
-		fmt.Println(err.Error())
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	// crea un objeto request con el header
+	// Crea un objeto request con el header
 	req, err := http.NewRequest("GET", ApiUrl+"items/"+product.ID, nil)
 	if err != nil {
-		fmt.Println(err.Error())
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 	// Agregar AccessToken en Header
 	req.Header.Set("Authorization", "Bearer "+token.AccessToken)
 
-	// crea un cliente HTTP y realiza el GET request con el objeto request creado
+	// Crea un cliente HTTP y realiza el GET request con el objeto request creado
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 	defer resp.Body.Close()
 
-	// lee la respuesta del servidor
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		c.JSON(resp.StatusCode, gin.H{"error": err.Error()})
-		return
-	}
-
 	// Valida que el estado sea OK
 	if resp.StatusCode != http.StatusOK {
 		var mercadoError interface{}
-		_ = json.Unmarshal(body, &mercadoError)
-		c.JSON(resp.StatusCode, mercadoError)
+		_ = json.NewDecoder(resp.Body).Decode(&mercadoError)
+		c.AbortWithStatusJSON(resp.StatusCode, mercadoError)
 		return
 	}
 
-	// decodifica el JSON en la estructura de Product de MercadoLibre
-	err = json.Unmarshal(body, &product)
+	// Decodifica el JSON en la estructura de Product de MercadoLibre
+	err = json.NewDecoder(resp.Body).Decode(&product)
 	if err != nil {
-		c.JSON(resp.StatusCode, gin.H{"error": err.Error()})
+		c.AbortWithStatusJSON(resp.StatusCode, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(200, product)
+	c.JSON(http.StatusOK, product)
 }
 
 // Crear un nuevo producto

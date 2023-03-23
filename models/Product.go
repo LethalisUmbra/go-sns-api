@@ -6,4 +6,6 @@ type Product struct {
 	Description string  `json:"description"`
 	Price       float64 `json:"price"`
 	Stock       int     `json:"stock"`
+	SKU         string  `json:"sku"`
+	MercadoID   string  `json:"mercado_id"`
 }
