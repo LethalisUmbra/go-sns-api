@@ -1,7 +1,6 @@
 package routes
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -24,23 +23,17 @@ var ClientSecret string = "Yk7f2sJjsNpHv1Ev9XVQUHYbdxLXzDaQ"
 // Obtener todos los productos
 func GetMercadoCode(c *gin.Context) {
 	// Datos del formulario a enviar
-	values := url.Values{}
-	values.Set("grant_type", "authorization_code")
-	values.Set("client_id", strconv.Itoa(ClientId))
-	values.Set("client_secret", ClientSecret)
-	values.Set("code", c.Query("code"))
-	values.Set("redirect_uri", "http://localhost:8080/mercadolibre")
-
-	// Codificar los datos del formulario en la URL
-	data := values.Encode()
-
-	// Crear un buffer de bytes con los datos del formulario
-	buffer := bytes.NewBufferString(data)
+	data := url.Values{}
+	data.Set("grant_type", "authorization_code")
+	data.Set("client_id", strconv.Itoa(ClientId))
+	data.Set("client_secret", ClientSecret)
+	data.Set("code", c.Query("code"))
+	data.Set("redirect_uri", "http://localhost:8080/mercadolibre")
 
 	// Crear el request HTTP POST
-	req, err := http.NewRequest("POST", ApiUrl+"/oauth/token", buffer)
+	req, err := http.NewRequest("POST", ApiUrl+"/oauth/token", strings.NewReader(data.Encode()))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"create_request_error": err.Error()})
+		utils.HandleError(c, http.StatusInternalServerError, err, "create_request_error")
 		return
 	}
 
@@ -48,10 +41,15 @@ func GetMercadoCode(c *gin.Context) {
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Accept", "application/json")
 
+	// Crear un cliente HTTP personalizado
+	client := &http.Client{
+		Timeout: time.Second * 10,
+	}
+
 	// Realizar la petición HTTP
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"http_request_error": err.Error()})
+		utils.HandleError(c, http.StatusInternalServerError, err, "http_request_error")
 		return
 	}
 	defer resp.Body.Close()
@@ -59,7 +57,7 @@ func GetMercadoCode(c *gin.Context) {
 	// lee la respuesta del servidor
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		c.JSON(resp.StatusCode, gin.H{"read_body_error": err.Error()})
+		utils.HandleError(c, resp.StatusCode, err, "read_body_error")
 		return
 	}
 
@@ -75,14 +73,14 @@ func GetMercadoCode(c *gin.Context) {
 	token := models.MercadoToken{CreatedAt: time.Now()}
 	err = json.Unmarshal(body, &token)
 	if err != nil {
-		c.JSON(resp.StatusCode, gin.H{"json_unmarshal_error": err.Error()})
+		utils.HandleError(c, resp.StatusCode, err, "json_unmarshal_error")
 		return
 	}
 
 	// Almacenar Token en la Base de Datos
 	result, err := utils.DB.Exec("INSERT INTO token (access_token, token_type, expires_in, scope, user_id, refresh_token, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)", token.AccessToken, token.TokenType, token.ExpiresIn, token.Scope, token.UserID, token.RefreshToken, token.CreatedAt.Format("2006-01-02 15:04:05"))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"database_error": err.Error()})
+		utils.HandleError(c, http.StatusInternalServerError, err, "database_error")
 		return
 	}
 	id, _ := result.LastInsertId()
