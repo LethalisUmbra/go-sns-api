@@ -37,6 +37,15 @@ func main() {
 		products.GET("/", routes.GetProducts)
 		products.GET("/:id", routes.GetProduct)
 		products.POST("/", routes.CreateProduct)
+		products.PATCH("/:id", routes.UpdateProduct)
+		products.DELETE("/:id", routes.DeleteProduct)
+	}
+
+	mercado := router.Group("/mercadolibre")
+	{
+		mercado.GET("/", routes.GetMercadoCode)
+		mercado.POST("/")
+		mercado.GET("/:id", routes.GetMercadoProduct)
 	}
 
 	// Especifica el archivo de log en el middleware Gin Logger
