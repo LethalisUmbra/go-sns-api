@@ -44,7 +44,7 @@ func main() {
 	mercado := router.Group("/mercadolibre")
 	{
 		mercado.GET("/", routes.GetMercadoCode)
-		mercado.POST("/")
+		mercado.POST("/", routes.CreateMercadoProduct)
 		mercado.GET("/:id", routes.GetMercadoProduct)
 	}
 

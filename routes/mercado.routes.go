@@ -138,22 +138,19 @@ func GetMercadoProduct(c *gin.Context) {
 
 // Crear un nuevo producto
 func CreateMercadoProduct(c *gin.Context) {
-	var product models.Product
-	var err error
-	err = c.BindJSON(&product)
+	var bodyProduct models.PostMercadoProduct
+	err := c.BindJSON(&bodyProduct)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	result, err := utils.DB.Exec("INSERT INTO products (name, description, price, stock) VALUES (?, ?, ?, ?)", product.Name, product.Description, product.Price, product.Stock)
+	product, err := utils.CreateMercadoProduct(bodyProduct)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	id, _ := result.LastInsertId()
 
-	product.ID = int(id)
 	c.JSON(http.StatusCreated, product)
 }
 

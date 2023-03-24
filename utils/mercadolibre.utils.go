@@ -16,6 +16,7 @@ import (
 var ApiUrl string = "https://api.mercadolibre.com/"
 var ClientId int = 572501217597774
 var ClientSecret string = "Yk7f2sJjsNpHv1Ev9XVQUHYbdxLXzDaQ"
+var httpClient = &http.Client{}
 
 func GetLastToken() (models.MercadoToken, error) {
 	var token models.MercadoToken
@@ -101,4 +102,56 @@ func RefreshToken(refreshToken string) (models.MercadoToken, error) {
 
 	token.ID = int(id)
 	return token, nil
+}
+
+func CreateMercadoProduct(formProduct models.PostMercadoProduct) (models.MercadoProduct, error) {
+	// Convertir product struct en JSON utilizando json.Marshal:
+	jsonBody, err := json.Marshal(formProduct)
+	if err != nil {
+		return models.MercadoProduct{}, fmt.Errorf("no se pudo codificar el cuerpo de la solicitud como JSON: %w", err)
+	}
+
+	// Obtener Auth Token
+	token, err := GetLastToken()
+	if err != nil {
+		return models.MercadoProduct{}, fmt.Errorf("no se pudo obtener el token: %w", err)
+	}
+
+	// Crear la solicitud HTTP POST
+	req, err := http.NewRequest("POST", ApiUrl+"items", bytes.NewBuffer(jsonBody))
+	if err != nil {
+		return models.MercadoProduct{}, fmt.Errorf("no se pudo crear la solicitud HTTP: %w", err)
+	}
+
+	// Establecer el header Authorization
+	req.Header.Set("Authorization", "Bearer "+token.AccessToken)
+
+	// Realizar la petición HTTP utilizando el cliente HTTP global
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return models.MercadoProduct{}, fmt.Errorf("no se pudo realizar la solicitud HTTP: %w", err)
+	}
+	defer resp.Body.Close()
+
+	// leer la respuesta del servidor
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return models.MercadoProduct{}, fmt.Errorf("no se pudo leer la respuesta del servidor: %w", err)
+	}
+
+	// Valida que el estado sea OK
+	if resp.StatusCode >= 400 {
+		var mercadoError interface{}
+		_ = json.Unmarshal(body, &mercadoError)
+		return models.MercadoProduct{}, fmt.Errorf("el servidor devolvió un estado inesperado (%d): %v", resp.StatusCode, mercadoError)
+	}
+
+	// Decodifica el JSON en la estructura del Producto
+	var product models.MercadoProduct
+	err = json.Unmarshal(body, &product)
+	if err != nil {
+		return models.MercadoProduct{}, fmt.Errorf("no se pudo decodificar la respuesta del servidor: %w", err)
+	}
+
+	return product, nil
 }
