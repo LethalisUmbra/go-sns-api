@@ -206,15 +206,53 @@ func UpdateMercadoProduct(c *gin.Context) {
 	GetProduct(c)
 }
 
-func DeleteMercadoProduct(c *gin.Context) {
-	id := c.Param("id")
-	_, err := utils.DB.Exec("DELETE FROM products WHERE id=?", id)
+func HandleMercadoCallback(c *gin.Context) {
+	var callback models.MercadoCallback
+	err := c.BindJSON(&callback)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	stmt, err := utils.DB.Prepare("INSERT INTO callbacks (_id, resource, user_id, topic, application_id, attempts, sent, received) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	defer stmt.Close()
+
+	sent := callback.Sent.Format("2006-01-02 15:04:05")
+	received := callback.Received.Format("2006-01-02 15:04:05")
+
+	go func() {
+		result, err := stmt.Exec(callback.MercadoID, callback.Resource, callback.UserID, callback.Topic, callback.ApplicationID, callback.Attempts, sent, received)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		id, err := result.LastInsertId()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		callback.ID = int(id)
+	}()
+
+	c.Status(http.StatusOK)
+}
+
+func CreateMercadoUser(c *gin.Context) {
+	user, err := utils.CreateMercadoUser()
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	_, err = utils.DB.Exec("INSERT INTO users (id, email, nickname, site_status, password) VALUES (?, ?, ?, ?, ?);", user.ID, user.Email, user.Nickname, user.SiteStatus, user.Password)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Product deleted successfully",
-	})
+	c.JSON(http.StatusOK, user)
 }

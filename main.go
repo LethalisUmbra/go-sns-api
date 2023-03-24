@@ -46,6 +46,8 @@ func main() {
 		mercado.GET("/", routes.GetMercadoCode)
 		mercado.POST("/", routes.CreateMercadoProduct)
 		mercado.GET("/:id", routes.GetMercadoProduct)
+		mercado.POST("/users", routes.CreateMercadoUser)
+		mercado.POST("/notifications", routes.HandleMercadoCallback)
 	}
 
 	// Especifica el archivo de log en el middleware Gin Logger

@@ -76,3 +76,23 @@ type MercadoToken struct {
 	RefreshToken string    `json:"refresh_token"`
 	CreatedAt    time.Time `json:"created_at"`
 }
+
+type MercadoCallback struct {
+	ID            int       `json:"id"`
+	MercadoID     string    `json:"_id"`
+	Resource      string    `json:"resource"`
+	UserID        int       `json:"user_id"`
+	Topic         string    `json:"topic"`
+	ApplicationID int       `json:"application_id"`
+	Attempts      int       `json:"attempts"`
+	Sent          time.Time `json:"sent"`
+	Received      time.Time `json:"received"`
+}
+
+type User struct {
+	ID         int    `json:"id"`
+	Email      string `json:"email"`
+	Nickname   string `json:"nickname"`
+	SiteStatus string `json:"site_status"`
+	Password   string `json:"password"`
+}

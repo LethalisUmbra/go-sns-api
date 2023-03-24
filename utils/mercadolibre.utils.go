@@ -155,3 +155,60 @@ func CreateMercadoProduct(formProduct models.PostMercadoProduct) (models.Mercado
 
 	return product, nil
 }
+
+func CreateMercadoUser() (models.User, error) {
+	// Crear el objeto JSON
+	data := map[string]string{
+		"site_id": "MLC",
+	}
+	// Convertir product struct en JSON utilizando json.Marshal:
+	jsonBody, err := json.Marshal(data)
+	if err != nil {
+		return models.User{}, fmt.Errorf("no se pudo codificar el cuerpo de la solicitud como JSON: %w", err)
+	}
+
+	// Obtener Auth Token
+	token, err := GetLastToken()
+	if err != nil {
+		return models.User{}, fmt.Errorf("no se pudo obtener el token: %w", err)
+	}
+
+	// Crear la solicitud HTTP POST
+	req, err := http.NewRequest("POST", ApiUrl+"users/test_user", bytes.NewBuffer(jsonBody))
+	if err != nil {
+		return models.User{}, fmt.Errorf("no se pudo crear la solicitud HTTP: %w", err)
+	}
+
+	// Establecer el header Authorization
+	req.Header.Set("Authorization", "Bearer "+token.AccessToken)
+	req.Header.Set("Content-type", "application/json")
+
+	// Realizar la petición HTTP utilizando el cliente HTTP global
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return models.User{}, fmt.Errorf("no se pudo realizar la solicitud HTTP: %w", err)
+	}
+	defer resp.Body.Close()
+
+	// leer la respuesta del servidor
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return models.User{}, fmt.Errorf("no se pudo leer la respuesta del servidor: %w", err)
+	}
+
+	// Valida que el estado sea OK
+	if resp.StatusCode >= 400 {
+		var mercadoError interface{}
+		_ = json.Unmarshal(body, &mercadoError)
+		return models.User{}, fmt.Errorf("el servidor devolvió un estado inesperado (%d): %v", resp.StatusCode, mercadoError)
+	}
+
+	// Decodifica el JSON en la estructura del Producto
+	var user models.User
+	err = json.Unmarshal(body, &user)
+	if err != nil {
+		return models.User{}, fmt.Errorf("no se pudo decodificar la respuesta del servidor: %w", err)
+	}
+
+	return user, nil
+}
