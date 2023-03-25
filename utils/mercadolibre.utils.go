@@ -6,11 +6,12 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"main/models"
 	"net/http"
 	"net/url"
 	"strconv"
 	"time"
+
+	"github.com/lethalisumbra/go-sns-api/models"
 )
 
 var ApiUrl string = "https://api.mercadolibre.com/"

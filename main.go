@@ -2,12 +2,12 @@ package main
 
 import (
 	"log"
-	"main/routes"
-	"main/utils"
 	"os"
 
 	"github.com/gin-gonic/gin"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/lethalisumbra/go-sns-api/routes"
+	"github.com/lethalisumbra/go-sns-api/utils"
 )
 
 func main() {

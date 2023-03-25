@@ -2,12 +2,13 @@ package routes
 
 import (
 	"fmt"
-	"main/models"
-	"main/utils"
 	"net/http"
 	"reflect"
 	"strconv"
 	"strings"
+
+	"github.com/lethalisumbra/go-sns-api/models"
+	"github.com/lethalisumbra/go-sns-api/utils"
 
 	"github.com/gin-gonic/gin"
 )

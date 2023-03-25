@@ -4,14 +4,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"main/models"
-	"main/utils"
 	"net/http"
 	"net/url"
 	"reflect"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/lethalisumbra/go-sns-api/models"
+	"github.com/lethalisumbra/go-sns-api/utils"
 
 	"github.com/gin-gonic/gin"
 )
