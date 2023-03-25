@@ -19,3 +19,5 @@ air
 *.exe
 logs/
 go.*
+
+.env

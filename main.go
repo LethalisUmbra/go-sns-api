@@ -2,29 +2,22 @@ package main
 
 import (
 	"log"
-	"os"
 
 	"github.com/gin-gonic/gin"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/joho/godotenv"
 	"github.com/lethalisumbra/go-sns-api/routes"
 	"github.com/lethalisumbra/go-sns-api/utils"
 )
 
 func main() {
-	// Crea una carpeta para los logs si no existe
-	err := os.MkdirAll("logs", os.ModePerm)
+	// Leer .env
+	err := godotenv.Load()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Error loading .env file: %v", err)
 	}
 
-	// Crea un archivo de log en la carpeta "logs"
-	file, err := os.OpenFile("logs/server.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer file.Close()
-
-	// Abrir SQLITE
+	// Abrir Base de Datos
 	err = utils.OpenDB()
 	if err != nil {
 		log.Fatal(err)
@@ -49,9 +42,6 @@ func main() {
 		mercado.POST("/users", routes.CreateMercadoUser)
 		mercado.POST("/notifications", routes.HandleMercadoCallback)
 	}
-
-	// Especifica el archivo de log en el middleware Gin Logger
-	router.Use(gin.LoggerWithWriter(file))
 
 	router.Run(":8080")
 }
