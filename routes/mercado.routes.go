@@ -3,7 +3,7 @@ package routes
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"reflect"
@@ -56,7 +56,7 @@ func GetMercadoCode(c *gin.Context) {
 	defer resp.Body.Close()
 
 	// lee la respuesta del servidor
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		utils.HandleError(c, resp.StatusCode, err, "read_body_error")
 		return
@@ -208,37 +208,11 @@ func UpdateMercadoProduct(c *gin.Context) {
 }
 
 func HandleMercadoCallback(c *gin.Context) {
-	var callback models.MercadoCallback
-	err := c.BindJSON(&callback)
-	if err != nil {
-		utils.HandleError(c, http.StatusBadRequest, err, "Error binding callback")
-		return
-	}
+	// Retornar un Status OK al momento de recibir el callback, esto porque MercadoLibre necesita recibir una respuesta en un lapso máximo de 500 milisegundos
+	c.Status(http.StatusOK)
 
-	stmt, err := utils.DB.Prepare("INSERT INTO callbacks (_id, resource, user_id, topic, application_id, attempts, sent, received) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
-	if err != nil {
-		utils.HandleError(c, http.StatusInternalServerError, err, "Error preparing query to insert callback")
-		return
-	}
-	defer stmt.Close()
-
-	sent := callback.Sent.Format("2006-01-02 15:04:05")
-	received := callback.Received.Format("2006-01-02 15:04:05")
-
-	result, err := stmt.Exec(callback.MercadoID, callback.Resource, callback.UserID, callback.Topic, strconv.Itoa(callback.ApplicationID), callback.Attempts, sent, received)
-	if err != nil {
-		utils.HandleError(c, http.StatusInternalServerError, err, fmt.Sprintf("Error storing callback in database: application_id (int): %d", callback.ApplicationID))
-		return
-	}
-
-	id, err := result.LastInsertId()
-	if err != nil {
-		utils.HandleError(c, http.StatusInternalServerError, err, "Error getting callback ID")
-		return
-	}
-	callback.ID = int(id)
-
-	c.JSON(http.StatusOK, callback)
+	// Procesar el Callback mediante goroutines
+	go utils.StoreMLCallback(c)
 }
 
 func CreateMercadoUser(c *gin.Context) {
