@@ -97,14 +97,14 @@ func GetMercadoProduct(c *gin.Context) {
 	// Obtener Auth Token
 	token, err := utils.GetLastToken()
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		utils.HandleError(c, http.StatusInternalServerError, err, "Error getting last token")
 		return
 	}
 
 	// Crea un objeto request con el header
 	req, err := http.NewRequest("GET", ApiUrl+"items/"+product.ID, nil)
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		utils.HandleError(c, http.StatusInternalServerError, err, "Error creating request")
 		return
 	}
 	// Agregar AccessToken en Header
@@ -114,7 +114,7 @@ func GetMercadoProduct(c *gin.Context) {
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		utils.HandleError(c, http.StatusInternalServerError, err, "Error fetching product to MercadoLibre")
 		return
 	}
 	defer resp.Body.Close()
@@ -130,7 +130,7 @@ func GetMercadoProduct(c *gin.Context) {
 	// Decodifica el JSON en la estructura de Product de MercadoLibre
 	err = json.NewDecoder(resp.Body).Decode(&product)
 	if err != nil {
-		c.AbortWithStatusJSON(resp.StatusCode, gin.H{"error": err.Error()})
+		utils.HandleError(c, resp.ProtoMajor, err, "Error decoding product")
 		return
 	}
 
@@ -211,13 +211,13 @@ func HandleMercadoCallback(c *gin.Context) {
 	var callback models.MercadoCallback
 	err := c.BindJSON(&callback)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		utils.HandleError(c, http.StatusBadRequest, err, "Error binding callback")
 		return
 	}
 
 	stmt, err := utils.DB.Prepare("INSERT INTO callbacks (_id, resource, user_id, topic, application_id, attempts, sent, received) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		utils.HandleError(c, http.StatusInternalServerError, err, "Error preparing query to insert callback")
 		return
 	}
 	defer stmt.Close()
@@ -225,33 +225,32 @@ func HandleMercadoCallback(c *gin.Context) {
 	sent := callback.Sent.Format("2006-01-02 15:04:05")
 	received := callback.Received.Format("2006-01-02 15:04:05")
 
-	go func() {
-		result, err := stmt.Exec(callback.MercadoID, callback.Resource, callback.UserID, callback.Topic, callback.ApplicationID, callback.Attempts, sent, received)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
-		id, err := result.LastInsertId()
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
-		callback.ID = int(id)
-	}()
+	result, err := stmt.Exec(callback.MercadoID, callback.Resource, callback.UserID, callback.Topic, strconv.Itoa(callback.ApplicationID), callback.Attempts, sent, received)
+	if err != nil {
+		utils.HandleError(c, http.StatusInternalServerError, err, fmt.Sprintf("Error storing callback in database: application_id (int): %d", callback.ApplicationID))
+		return
+	}
 
-	c.Status(http.StatusOK)
+	id, err := result.LastInsertId()
+	if err != nil {
+		utils.HandleError(c, http.StatusInternalServerError, err, "Error getting callback ID")
+		return
+	}
+	callback.ID = int(id)
+
+	c.JSON(http.StatusOK, callback)
 }
 
 func CreateMercadoUser(c *gin.Context) {
 	user, err := utils.CreateMercadoUser()
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		utils.HandleError(c, http.StatusBadRequest, err, "Error creating a MercadoLibre user")
 		return
 	}
 
 	_, err = utils.DB.Exec("INSERT INTO users (id, email, nickname, site_status, password) VALUES (?, ?, ?, ?, ?);", user.ID, user.Email, user.Nickname, user.SiteStatus, user.Password)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		utils.HandleError(c, http.StatusInternalServerError, err, "Error storing a MercadoLibre user in database")
 		return
 	}
 
