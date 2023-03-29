@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/lethalisumbra/go-sns-api/models"
+	"github.com/lethalisumbra/go-sns-api/models/mercadolibre"
 	"github.com/lethalisumbra/go-sns-api/utils"
 
 	"github.com/gin-gonic/gin"
@@ -71,7 +72,7 @@ func GetMercadoCode(c *gin.Context) {
 	}
 
 	// Decodifica el JSON en la estructura de Token
-	token := models.MercadoToken{CreatedAt: time.Now()}
+	token := mercadolibre.MercadoToken{CreatedAt: time.Now()}
 	err = json.Unmarshal(body, &token)
 	if err != nil {
 		utils.HandleError(c, resp.StatusCode, err, "json_unmarshal_error")
@@ -92,7 +93,7 @@ func GetMercadoCode(c *gin.Context) {
 
 // Obtener un producto por su ID
 func GetMercadoProduct(c *gin.Context) {
-	product := models.MercadoProduct{ID: c.Param("id")}
+	product := mercadolibre.MercadoProduct{ID: c.Param("id")}
 
 	// Obtener Auth Token
 	token, err := utils.GetLastToken()
@@ -139,7 +140,7 @@ func GetMercadoProduct(c *gin.Context) {
 
 // Crear un nuevo producto
 func CreateMercadoProduct(c *gin.Context) {
-	var bodyProduct models.PostMercadoProduct
+	var bodyProduct mercadolibre.PostMercadoProduct
 	err := c.BindJSON(&bodyProduct)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
