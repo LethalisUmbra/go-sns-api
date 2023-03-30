@@ -41,6 +41,11 @@ func main() {
 		mercado.GET("/:id", routes.GetMercadoProduct)
 		mercado.POST("/users", routes.CreateMercadoUser)
 		mercado.POST("/notifications", routes.HandleMercadoCallback)
+
+		// orders := mercado.Group("/orders")
+		// {
+		// orders.GET("/:order_id", routes.GetMercadoOrder)
+		// }
 	}
 
 	router.Run(":8080")

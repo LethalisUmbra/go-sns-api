@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -236,6 +237,124 @@ func StoreMLCallback(c *gin.Context) {
 	_, err = stmt.Exec(callback.MercadoID, callback.Resource, callback.UserID, callback.Topic, strconv.Itoa(callback.ApplicationID), callback.Attempts, sent, received)
 	if err != nil {
 		HandleError(c, http.StatusInternalServerError, err, fmt.Sprintf("Error storing callback in database: application_id (int): %d", callback.ApplicationID))
+		return
+	}
+
+	// Identificar 'orders' en callback
+	if callback.Topic != "orders_v2" {
+		return
+	}
+
+	// Hacer query con el resource a mercadolibre
+
+	// Obtener Auth Token
+	token, err := GetLastToken()
+	if err != nil {
+		StoreError(http.StatusInternalServerError, err, "Error consiguiendo el último token")
+		return
+	}
+
+	// Crear la solicitud HTTP GET
+	req, err := http.NewRequest("GET", ApiUrl+callback.Resource, nil)
+	if err != nil {
+		StoreError(http.StatusInternalServerError, err, "No se pudo crear la solicitud HTTP")
+		return
+	}
+
+	// Establecer el header Authorization
+	req.Header.Set("Authorization", "Bearer "+token.AccessToken)
+
+	// Realizar la petición HTTP utilizando el cliente HTTP global
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		StoreError(http.StatusInternalServerError, err, "No se pudo realizar la solicitud HTTP")
+		return
+	}
+	defer resp.Body.Close()
+
+	// leer la respuesta del servidor
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		StoreError(http.StatusInternalServerError, err, "No se pudo leer la respuesta del servidor")
+		return
+	}
+
+	// Valida que el estado sea OK
+	if resp.StatusCode >= 400 {
+		var mercadoError interface{}
+		_ = json.Unmarshal(body, &mercadoError)
+		c.JSON(resp.StatusCode, mercadoError)
+		return
+	}
+
+	// Decodifica el JSON en la estructura de la Order
+	var order mercadolibre.Order
+	err = json.Unmarshal(body, &order)
+	if err != nil {
+		StoreError(http.StatusInternalServerError, err, "No se pudo decodificar la respuesta del servidor")
+		return
+	}
+
+	// Almacenar orders
+	fields := []string{
+		"date_created",
+		"last_updated",
+		"expiration_date",
+		"date_closed",
+		"buying_mode",
+		"total_amount",
+		"paid_amount",
+		"coupon_id",
+		"currency_id",
+		"_id",
+	}
+
+	values := []string{
+		"'" + order.DateCreated.Format("2006-01-02 15:04:05") + "'",
+		"'" + order.LastUpdated.Format("2006-01-02 15:04:05") + "'",
+		"'" + order.ExpirationDate.Format("2006-01-02 15:04:05") + "'",
+		"'" + order.DateClosed.Format("2006-01-02 15:04:05") + "'",
+		"'" + order.BuyingMode + "'",
+		fmt.Sprintf("%.2f", order.TotalAmount),
+		fmt.Sprintf("%.2f", order.PaidAmount),
+		"'" + fmt.Sprintf("%v", order.Coupon.ID) + "'",
+		"'" + order.CurrencyID + "'",
+		"'" + fmt.Sprintf("%v", order.ID) + "'",
+	}
+
+	query := fmt.Sprintf("INSERT INTO orders (%s) VALUES (%s);", strings.Join(fields, ","), strings.Join(values, ","))
+
+	// Ejecutar query
+	_, err = DB.Exec(query)
+
+	// Validar errores
+	if err != nil {
+		StoreError(http.StatusInternalServerError, err, "No se pudo almacenar la orden en la base de datos")
+		return
+	}
+
+	// Identificar producto(s)
+	// For loop en order.OrderItems
+	for _, orderItem := range order.OrderItems {
+		// 1 - Por cada item hacer un update a la base de datos para actualizar el stock
+		// 1.1 - UPDATE products SET stock = stock - quantity WHERE sku/mercado_id = order_item.seller_sku/order_item.item_id;
+		go updateStock(orderItem.Item.SellerSKU, orderItem.Quantity)
+	}
+
+}
+
+func updateStock(sku string, quantity int) {
+	query := fmt.Sprintf("UPDATE products SET stock = stock - %d WHERE sku = %s;", quantity, sku)
+
+	res, err := DB.Exec(query)
+	// Validar errores
+	if err != nil {
+		StoreError(http.StatusInternalServerError, err, "No se pudo actualizar el stock del producto")
+		return
+	}
+
+	if rows, err := res.RowsAffected(); err != nil || rows == 0 {
+		StoreError(http.StatusInternalServerError, err, "No se pudo actualizar el stock del producto")
 		return
 	}
 }
