@@ -234,7 +234,7 @@ func StoreMLCallback(c *gin.Context) {
 	sent := callback.Sent.Format("2006-01-02 15:04:05")
 	received := callback.Received.Format("2006-01-02 15:04:05")
 
-	_, err = stmt.Exec(callback.MercadoID, callback.Resource, callback.UserID, callback.Topic, strconv.Itoa(callback.ApplicationID), callback.Attempts, sent, received)
+	_, err = stmt.Exec(callback.MercadoID, callback.Resource, callback.UserID, callback.Topic, strconv.Itoa(int(callback.ApplicationID)), callback.Attempts, sent, received)
 	if err != nil {
 		HandleError(c, http.StatusInternalServerError, err, fmt.Sprintf("Error storing callback in database: application_id (int): %d", callback.ApplicationID))
 		return
