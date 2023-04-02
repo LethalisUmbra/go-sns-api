@@ -26,7 +26,7 @@ func GetProducts(c *gin.Context) {
 	var products []models.Product
 
 	for rows.Next() {
-		err := rows.Scan(&product.ID, &product.Name, &product.Description, &product.Price, &product.Stock)
+		err := rows.Scan(&product.ID, &product.Name, &product.Description, &product.Price, &product.Stock, &product.SKU, &product.MercadoID)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -51,9 +51,9 @@ func GetProduct(c *gin.Context) {
 		return
 	}
 
-	row := utils.DB.QueryRow("SELECT name, description, price, stock FROM products WHERE id = ?", product.ID)
+	row := utils.DB.QueryRow("SELECT name, description, price, stock, sku, mercado_id FROM products WHERE id = ?", product.ID)
 
-	err = row.Scan(&product.Name, &product.Description, &product.Price, &product.Stock)
+	err = row.Scan(&product.Name, &product.Description, &product.Price, &product.Stock, &product.SKU, &product.MercadoID)
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return

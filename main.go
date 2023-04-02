@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"net/http"
 
 	"github.com/gin-gonic/gin"
 	_ "github.com/go-sql-driver/mysql"
@@ -25,6 +26,12 @@ func main() {
 
 	router := gin.Default()
 
+	router.LoadHTMLGlob("templates/*")
+
+	router.GET("/", func(c *gin.Context) {
+		c.HTML(http.StatusOK, "index.html", nil)
+	})
+
 	products := router.Group("/products")
 	{
 		products.GET("/", routes.GetProducts)
@@ -42,10 +49,10 @@ func main() {
 		mercado.POST("/users", routes.CreateMercadoUser)
 		mercado.POST("/notifications", routes.HandleMercadoCallback)
 
-		// orders := mercado.Group("/orders")
-		// {
-		// orders.GET("/:order_id", routes.GetMercadoOrder)
-		// }
+		orders := mercado.Group("/orders")
+		{
+			orders.GET("/:order_id", routes.GetMercadoOrder)
+		}
 	}
 
 	router.Run(":8080")

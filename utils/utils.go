@@ -11,7 +11,7 @@ func HandleError(c *gin.Context, statusCode int, err error, message string) {
 	// Almacenar error en Base de Datos
 	er := StoreError(statusCode, err, message)
 	if er != nil {
-		log.Printf("%s: %s", message, err.Error())
+		log.Printf("%s: %s", message, er.Error())
 	}
 
 	log.Printf("%s: %s", message, err.Error())

@@ -209,11 +209,30 @@ func UpdateMercadoProduct(c *gin.Context) {
 }
 
 func HandleMercadoCallback(c *gin.Context) {
-	// Retornar un Status OK al momento de recibir el callback, esto porque MercadoLibre necesita recibir una respuesta en un lapso máximo de 500 milisegundos
+	var callback mercadolibre.MercadoCallback
+
+	// Bindear request en callback
+	err := c.ShouldBindJSON(&callback)
+
+	// Retornar un Status OK luego de bindear el callback, esto porque MercadoLibre necesita recibir una respuesta en un lapso máximo de 500 milisegundos
 	c.Status(http.StatusOK)
 
-	// Procesar el Callback mediante goroutines
-	go utils.StoreMLCallback(c)
+	// Revisar si existe un error en el binding
+	if err != nil {
+		utils.HandleError(c, http.StatusBadRequest, err, "Error binding callback")
+		return
+	}
+
+	// Almacenar Callback en la base de datos
+	err = utils.StoreMercadoCallback(callback)
+	if err != nil {
+		utils.HandleError(c, http.StatusInternalServerError, err, "Error storing callback")
+	}
+
+	// Gestionar Order si coincide con Topic
+	if callback.Topic == "orders_v2" {
+		go utils.CreateOrder(c, callback.Resource)
+	}
 }
 
 func CreateMercadoUser(c *gin.Context) {
@@ -230,4 +249,17 @@ func CreateMercadoUser(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, user)
+}
+
+func GetMercadoOrder(c *gin.Context) {
+	order_id := c.Param("order_id")
+	resource := "/orders/" + order_id
+
+	order, msg, err := utils.GetMercadoOrder(resource)
+	if err != nil {
+		utils.HandleError(c, http.StatusInternalServerError, err, msg)
+		return
+	}
+
+	c.JSON(http.StatusOK, order)
 }

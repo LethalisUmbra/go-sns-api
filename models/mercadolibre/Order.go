@@ -81,7 +81,7 @@ type OrderItem struct {
 }
 
 type Order struct {
-	ID              int           `json:"id"`
+	ID              uint64        `json:"id"`
 	DateCreated     time.Time     `json:"date_created"`
 	LastUpdated     time.Time     `json:"last_updated"`
 	ExpirationDate  time.Time     `json:"expiration_date"`
